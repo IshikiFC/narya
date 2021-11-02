@@ -1,0 +1,6 @@
+services:
+  narya:
+    build: ./
+    volumes:
+      - .:/app
+    command: /bin/bash
