@@ -3,14 +3,6 @@ services:
     build: ./
     volumes:
       - .:/app
-    command: /bin/bash
-
-
-services:
-  api:
-    build: ./
-    volumes:
-      - .:/app
     ports:
       - 8888:8888
     command: ./run.sh
