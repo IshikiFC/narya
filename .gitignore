@@ -16,3 +16,5 @@ build/*
 # developer environments
 .idea
 .vscode
+
+narya-env

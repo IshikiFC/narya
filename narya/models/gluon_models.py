@@ -68,6 +68,7 @@ class TrackerModel:
                     resized_img = input_img[x_1:x_2, y_1:y_2, :]
 
                     img = self.preprocessing(resized_img)
+                    img = img.copyto(self.ctx[0])
                     cid, score, bbox = self.model(img)
                     cid, score, bbox = cid.asnumpy(), score.asnumpy(), bbox.asnumpy()
                     full_cid = (
