@@ -186,7 +186,10 @@ def draw_frame(
     """
     fig, ax = draw_pitch(dpi=dpi)
 
-    dfFrame = get_frame(df, t, fps=fps)
+    try:
+        dfFrame = get_frame(df, t, fps=fps)
+    except Exception:
+        return fig, ax, None
 
     if show_players:
         for pid in dfFrame.index:
@@ -383,7 +386,7 @@ def make_animation(df, fps=20, voronoi=True):
     Raises:
     """
     # calculated variables
-    length = (df.index.max() + 20) / fps
+    length = (df.index.max() + fps) / fps
     clip = mpy.VideoClip(
         lambda x: draw_frame_x(df, t=x, fps=fps, voronoi=voronoi), duration=length - 1
     ).set_fps(fps)
