@@ -6,10 +6,9 @@ from pathlib import Path
 
 import cv2
 import imageio
+import pandas as pd
 
 from narya.tracker.full_tracker import FootballTracker
-from narya.utils.tracker import build_df_per_id
-from narya.utils.tracker import get_full_results
 from narya.utils.vizualization import make_animation
 
 LOGGER = logging.getLogger(__name__)
@@ -54,9 +53,17 @@ def read_processed_images(out_dir):
     return img_list
 
 
-def to_trajecctory_df(trajectories):
-    df_per_id = build_df_per_id(trajectories)
-    df = get_full_results(df_per_id)
+def to_trajectory_df(trajectories):
+    records = []
+    for id_, trajectory in trajectories.items():
+        for record in trajectory:
+            records.append({
+                'id': id_,
+                'x': record[0],
+                'y': record[1],
+                'frame': record[2]
+            })
+    df = pd.DataFrame(records)
 
     # add fields necessary for visualization
     df['bgcolor'] = 'red'
@@ -94,7 +101,7 @@ def main():
             writer.append_data(image)
     LOGGER.info(f'saved processed video to {processed_video_path}')
 
-    trajectory_df = to_trajecctory_df(trajectories)
+    trajectory_df = to_trajectory_df(trajectories)
     plot_clip = make_animation(trajectory_df, voronoi=False, fps=args.fps)
     plot_clip.write_videofile(plot_video_path)
     LOGGER.info(f'saved plot video to {plot_video_path}')
