@@ -59,11 +59,12 @@ def to_trajectory_df(trajectories):
         for record in trajectory:
             records.append({
                 'id': id_,
-                'x': record[0],
-                'y': record[1],
+                'x': record[0] * 100.0 / 320.0,
+                'y': 100 - (record[1] * 100.0 / 320.0),
                 'frame': record[2]
             })
     df = pd.DataFrame(records)
+    df = df.set_index('frame')
 
     # add fields necessary for visualization
     df['bgcolor'] = 'red'
@@ -84,34 +85,38 @@ def main():
     processed_video_path = str(out_dir / 'processed.mp4')
     plot_video_path = str(out_dir / 'plot.mp4')
 
-    img_list = sample_images(args.video, args.fps)
-    LOGGER.info(f'sampled {len(img_list)} images from {args.video}')
+    if not args.skip_track:
+        img_list = sample_images(args.video, args.fps)
+        LOGGER.info(f'sampled {len(img_list)} images from {args.video}')
 
-    template = read_template()
-    tracker = FootballTracker(frame_rate=args.fps, track_buffer=60)
-    trajectories = tracker(img_list, split_size=512, save_tracking_folder=f'{out_dir}/', template=template)
-    with open(trajectory_path, 'w') as fp:
-        json.dump(trajectories, fp)
-    LOGGER.info(f'saved trajectories to {trajectory_path}')
+        template = read_template()
+        tracker = FootballTracker(frame_rate=args.fps, track_buffer=60)
+        trajectories = tracker(img_list, split_size=512, save_tracking_folder=f'{out_dir}/', template=template)
+        with open(trajectory_path, 'w') as f:
+            json.dump(trajectories, f)
+        LOGGER.info(f'saved trajectories to {trajectory_path}')
 
     img_paths = sorted(glob.glob(processed_image_path))
     with imageio.get_writer(processed_video_path, mode='I', fps=args.fps) as writer:
         for img_path in img_paths:
             image = imageio.imread(img_path)
             writer.append_data(image)
-    LOGGER.info(f'saved processed video to {processed_video_path}')
+    LOGGER.info(f'saved processed images to {processed_video_path}')
 
+    with open(trajectory_path, 'r') as f:
+        trajectories = json.load(f)
     trajectory_df = to_trajectory_df(trajectories)
     plot_clip = make_animation(trajectory_df, voronoi=False, fps=args.fps)
     plot_clip.write_videofile(plot_video_path)
-    LOGGER.info(f'saved plot video to {plot_video_path}')
+    LOGGER.info(f'saved plot images to {plot_video_path}')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--video', help='動画ファイル（mp4）', required=True)
+    parser.add_argument('--video', help='入力動画ファイル（mp4）', required=True)
     parser.add_argument('--out', help='出力先フォルダ', required=True)
     parser.add_argument('--fps', help='出力動画のFPS', type=float, default=5.0)
+    parser.add_argument('--skip_track', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
