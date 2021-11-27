@@ -37,7 +37,8 @@ def sample_images(video_path, fps):
         frame_pos = round(video_fps * msec / 1000)
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos)
         ret, frame = cap.read()
-        img_list.append(cv2.resize(frame, (512, 512)))
+        if ret:
+            img_list.append(cv2.resize(frame, (512, 512)))
     cap.release()
 
     return img_list
@@ -80,6 +81,7 @@ def to_trajectory_df(trajectories):
 
 def main():
     out_dir = Path(args.out)
+    out_dir.mkdir(exist_ok=True)
     trajectory_path = str(out_dir / 'trajectories.json')
     processed_image_path = str(out_dir / 'test_*.jpg')
     processed_video_path = str(out_dir / 'processed.mp4')
