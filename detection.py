@@ -34,7 +34,7 @@ def initialize_tracker_model():
 
 
 def main():
-    img_paths = glob.glob(f'{args.input}/*.jpg')
+    img_paths = sorted(glob.glob(f'{args.input}/*.jpg'))
     LOGGER.info(f'found {len(img_paths)} images in {args.input}')
 
     tracker_model = initialize_tracker_model()
@@ -45,13 +45,13 @@ def main():
         image = read_image(image_path)
         cid, score, bbox = tracker_model(image, split_size=512)
         mask = score[0, :, 0] > 0.5
-        cid, score, bbox = cid[0, mask], score[0, mask], bbox[0, mask]
+        cid, score, bbox = cid[0, mask, 0], score[0, mask, 0], bbox[0, mask]
 
         recs = []
         for i in range(len(cid)):
             rec = dict()
             rec['image'] = Path(image_path).stem
-            rec['cid'] = int(cid)
+            rec['cid'] = int(cid[i])
             rec['score'] = score[i]
             rec['x1'], rec['y1'], rec['x2'], rec['y2'] = bbox[i]
             recs.append(rec)
