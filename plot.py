@@ -5,41 +5,53 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pypoman
 from matplotlib.patches import Ellipse
 from moviepy.video.io.bindings import mplfig_to_npimage
+from scipy.spatial import ConvexHull
 
 from narya.utils.vizualization import draw_pitch
 
 LOGGER = logging.getLogger(__name__)
 
 
-def find_contours(im):
-    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-    ret, thresh = cv2.threshold(gray, 127, 255, 0)
-    contours = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)[0][0]
-    return contours
-
-
 def find_visible_area(h, template_size, image_size):
     """
-    template->imageのhomographyからnarya座標におけるvisible areaを算出
+    template->imageのhomographyから、narya座標におけるvisible areaを算出
+
+    homographyでimage座標に変換した際にimage上に収まる範囲を連立不等式にする
     """
 
-    h_inv = np.linalg.inv(np.array(h))
-    template_h, template_w = template_size
-    image_h, image_w = image_size
+    th, tw = template_size
+    ih, iw = image_size
 
-    im = np.ones((image_h, image_w, 3), dtype=np.uint8) * 255
-    im = cv2.warpPerspective(im, h_inv, dsize=(template_w, template_h))
-    contours = find_contours(im)
-    xs = [c[0][0] * 100 / template_w for c in contours]
-    ys = [(template_h - c[0][1]) * 100 / template_h for c in contours]
+    A = np.array([
+        [-1, 0], [1, 0], [0, -1], [0, 1],
+        [-h[0][0], -h[0][1]],
+        [h[0][0] - iw * h[2][0], h[0][1] - iw * h[2][1]],
+        [-h[1][0], -h[1][1]],
+        [h[1][0] - ih * h[2][0], h[1][1] - ih * h[2][1]],
+    ])
+    b = np.array([
+        0, tw, 0, th,
+        h[0][2],
+        -h[0][2] + iw * h[2][2],
+        h[1][2],
+        -h[1][2] + ih * h[2][2]
+    ])
+    vertices = pypoman.compute_polytope_vertices(A, b)
+
+    hull = ConvexHull(vertices)
+    xs, ys = [], []
+    for i in hull.vertices:
+        v = vertices[i]
+        xs.append(v[0] * 100 / tw)
+        ys.append((th - v[1]) * 100 / th)
     return xs, ys
 
 
 def draw_image(homo_rec, detect_df):
-    xs, ys = find_visible_area(
-        homo_rec['homography'], homo_rec['template_size'], homo_rec['image_size'])
+    xs, ys = find_visible_area(homo_rec['homography'], homo_rec['template_size'], homo_rec['image_size'])
 
     fig, ax = draw_pitch(pitch_color='gray')
     ax.fill(xs, ys, c='green', alpha=0.30)
